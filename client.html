@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Terminal</title>
+    <style>
+        body { font-family: monospace; background-color: #1e1e1e; color: #ffffff; }
+        #terminal { padding: 10px; border: 1px solid #444; height: 860px; overflow-y: auto; white-space: pre; outline: none; }
+        .prompt { color: #00ff00; } /* Цвет для подсказки (директория) */
+        .input-line { display: flex; } /* Для выравнивания ввода */
+        .command-input { flex-grow: 1; } /* Для занимания доступного пространства */
+    </style>
+</head>
+<body>
+    <div id="terminal"></div>
+    <script>
+        const terminal = document.getElementById("terminal");
+        let currentDir = ""; // Для хранения текущей директории
+
+        // Инициализируем терминал
+        function initTerminal() {
+            const inputLine = document.createElement("div");
+            inputLine.className = "input-line";
+
+            const promptDiv = document.createElement("span");
+            promptDiv.className = "prompt";
+            promptDiv.textContent = currentDir || "➜  ~ "; // Начальная подсказка
+
+            const commandInput = document.createElement("span");
+            commandInput.contentEditable = true;
+            commandInput.className = "command-input";
+            commandInput.setAttribute("data-placeholder", "Type your command here...");
+
+            inputLine.appendChild(promptDiv);
+            inputLine.appendChild(commandInput);
+            terminal.appendChild(inputLine);
+            terminal.scrollTop = terminal.scrollHeight; // Прокрутка вниз
+            placeCaretAtEnd(commandInput); // Устанавливаем курсор в конец
+        }
+
+   const socket = new WebSocket("ws://localhost:8080");
+
+
+
+
+
+ // Измените порт, если необходимо
+
+        socket.onmessage = function(event) {
+            const message = event.data;
+
+            // Обработка сообщения
+            if (message.includes("> ")) {
+                const lines = message.split("\n");
+                const output = lines.slice(0, lines.length - 1).join("\n");
+                currentDir = lines[lines.length - 1]; // Последняя строка – это текущая директория
+                terminal.innerHTML += output + "\n"; // Добавляем вывод к терминалу
+            } else {
+                terminal.innerHTML += message; // Добавляем вывод к терминалу
+            }
+
+            // Перемещаем курсор в конец
+            terminal.innerHTML += "\n";
+            initTerminal(); // Создаем новую строку ввода
+            placeCaretAtEnd(terminal.lastChild.lastChild); // Устанавливаем курсор в конец
+        };
+
+        terminal.addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault(); // Предотвращаем новую строку
+
+                const inputLine = terminal.lastChild;
+                const commandInput = inputLine.lastChild;
+
+                // Получаем команду
+                const command = commandInput.textContent.trim(); // Убираем лишние пробелы
+
+                if (command) {
+                    // Отправляем команду на сервер
+                    socket.send(command);
+                    terminal.innerHTML += command + "\n"; // Добавляем введённую команду
+                }
+
+                // Создаем новую строку ввода
+                terminal.scrollTop = terminal.scrollHeight; // Прокрутка вниз
+                initTerminal(); // Создаем новую строку ввода
+            }
+        });
+
+        function placeCaretAtEnd(el) {
+            el.focus();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false); // Перемещаем курсор в конец
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+
+        initTerminal(); // Инициализируем терминал при загрузке страницы
+    </script>
+</body>
+</html>
